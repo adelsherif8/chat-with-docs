@@ -16,7 +16,9 @@ Rules:
 - If the answer is not contained in the sources, say so plainly — do not guess or use outside knowledge.
 - Be concise and direct.`;
 
-const TOP_K = 6;
+// Higher k so cross-document questions ("which candidate is best?") can see
+// passages from every uploaded document, not just the closest one or two.
+const TOP_K = 10;
 
 function send(controller: ReadableStreamDefaultController, obj: unknown) {
   controller.enqueue(new TextEncoder().encode(JSON.stringify(obj) + "\n"));

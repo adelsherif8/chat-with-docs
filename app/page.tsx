@@ -93,7 +93,7 @@ export default function Home() {
           } else if (evt.type === "error") {
             update((m) => ({
               ...m,
-              content: `⚠️ ${evt.error}`,
+              content: `Error: ${evt.error}`,
               pending: false,
             }));
           } else if (evt.type === "done") {
@@ -106,7 +106,7 @@ export default function Home() {
         const copy = [...prev];
         copy[assistantIndex] = {
           ...copy[assistantIndex],
-          content: `⚠️ ${e.message}`,
+          content: `Error: ${e.message}`,
           pending: false,
         };
         return copy;
@@ -138,7 +138,7 @@ export default function Home() {
 
         <div className="mt-auto pt-6 text-[11px] leading-relaxed text-slate-600">
           <div className="mb-1 font-medium text-slate-500">How it works</div>
-          PDF → chunk + embed → pgvector search → Claude answers with cited
+          PDF → chunk + embed → pgvector search → the model answers with cited
           sources.
         </div>
       </aside>
@@ -184,7 +184,7 @@ export default function Home() {
               {streaming ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               ) : (
-                "↑"
+                <i className="fa-solid fa-arrow-up" />
               )}
             </button>
           </form>
@@ -207,8 +207,8 @@ function EmptyState({
 }) {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent2 text-3xl">
-        ✦
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent2 text-2xl text-white">
+        <i className="fa-solid fa-wand-magic-sparkles" />
       </div>
       <h2 className="mt-4 text-xl font-semibold text-white">
         Ask your documents anything

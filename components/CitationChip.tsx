@@ -39,7 +39,7 @@ export function CitationChip({
               onClick={() => setOpen(false)}
               className="text-slate-500 hover:text-slate-300"
             >
-              ✕
+              <i className="fa-solid fa-xmark" />
             </button>
           </div>
           <p className="text-sm leading-relaxed text-slate-300">

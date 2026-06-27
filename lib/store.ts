@@ -1,15 +1,21 @@
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
+// Bundled, pre-embedded sample documents. Imported (not fs-read) so it's always
+// included in the serverless bundle. Acts as a read-only fallback so the hosted
+// demo works with zero external services.
+import seedData from "../data/seed-store.json";
 
-// Simple persistent vector store backed by a JSON file on disk.
-// Real retrieval, real persistence, zero external services — ideal for running
-// the app locally. For a cloud deploy (Vercel), swap this for Supabase pgvector
-// (see supabase/schema.sql); the upload/chat routes only depend on the functions
-// exported here.
-
-const DATA_DIR = path.join(process.cwd(), ".data");
-const STORE_PATH = path.join(DATA_DIR, "store.json");
+// Persistent vector store backed by a JSON file on disk.
+// - Local dev: writes to ./.data/store.json
+// - Vercel (read-only project FS): writes to /tmp (per-instance, ephemeral)
+// - If no writable store exists yet, falls back to the bundled seed above.
+// For a multi-tenant production deploy, swap these functions for a hosted vector
+// DB (the pgvector schema in supabase/schema.sql is ready to drop in).
+const WRITABLE_DIR = process.env.VERCEL
+  ? "/tmp"
+  : path.join(process.cwd(), ".data");
+const STORE_PATH = path.join(WRITABLE_DIR, "store.json");
 
 export type StoredDocument = {
   id: string;
@@ -42,12 +48,14 @@ async function readStore(): Promise<StoreShape> {
     const raw = await fs.readFile(STORE_PATH, "utf8");
     return JSON.parse(raw) as StoreShape;
   } catch {
-    return { documents: [], chunks: [], nextChunkId: 1 };
+    // No writable store yet — start from the bundled seed (deep-copied so we
+    // never mutate the imported module).
+    return JSON.parse(JSON.stringify(seedData)) as StoreShape;
   }
 }
 
 async function writeStore(store: StoreShape): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(WRITABLE_DIR, { recursive: true });
   await fs.writeFile(STORE_PATH, JSON.stringify(store), "utf8");
 }
 

@@ -47,7 +47,7 @@ export default function DemoPage() {
         </header>
 
         <div className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-edge bg-panel/40 px-4 py-6 text-center">
-          <div className="text-2xl">⬆️</div>
+          <i className="fa-solid fa-cloud-arrow-up text-2xl text-accent" />
           <div className="mt-1 text-sm font-medium text-slate-200">
             Drop a PDF or click to upload
           </div>
@@ -56,7 +56,7 @@ export default function DemoPage() {
 
         <ul className="mt-3 space-y-1.5">
           <li className="flex items-center gap-2 rounded-lg border border-edge bg-panel px-3 py-2 text-sm">
-            <span>📄</span>
+            <i className="fa-solid fa-file-pdf text-accent2" />
             <span className="flex-1 truncate text-slate-200">Acme_MSA_2024.pdf</span>
             <span className="shrink-0 text-[11px] text-slate-500">14p · 38 chunks</span>
           </li>
@@ -64,7 +64,7 @@ export default function DemoPage() {
 
         <div className="mt-auto pt-6 text-[11px] leading-relaxed text-slate-600">
           <div className="mb-1 font-medium text-slate-500">How it works</div>
-          PDF → chunk + embed → pgvector search → Claude answers with cited sources.
+          PDF → chunk + embed → pgvector search → the model answers with cited sources.
         </div>
       </aside>
 
@@ -75,7 +75,7 @@ export default function DemoPage() {
           <div className="flex animate-fade-up justify-start">
             <div className="flex max-w-[85%] gap-3">
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent2 text-sm text-white">
-                ✦
+                <i className="fa-solid fa-wand-magic-sparkles" />
               </div>
               <div>
                 <div className="inline-block rounded-2xl border border-edge bg-panel px-4 py-2.5 text-[15px] leading-relaxed text-slate-100">
@@ -101,7 +101,7 @@ export default function DemoPage() {
               Ask a question about your documents…
             </div>
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-white">
-              ↑
+              <i className="fa-solid fa-arrow-up" />
             </div>
           </div>
           <p className="mt-2 text-center text-[11px] text-slate-600">

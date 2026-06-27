@@ -55,7 +55,7 @@ function Avatar({ isUser }: { isUser: boolean }) {
           : "bg-gradient-to-br from-accent to-accent2 text-white"
       }`}
     >
-      {isUser ? "🧑" : "✦"}
+      <i className={isUser ? "fa-solid fa-user" : "fa-solid fa-wand-magic-sparkles"} />
     </div>
   );
 }

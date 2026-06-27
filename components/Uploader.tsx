@@ -69,7 +69,7 @@ export function Uploader({
           </div>
         ) : (
           <>
-            <div className="text-2xl">⬆️</div>
+            <i className="fa-solid fa-cloud-arrow-up text-2xl text-accent" />
             <div className="mt-1 text-sm font-medium text-slate-200">
               Drop a PDF or click to upload
             </div>
@@ -89,7 +89,7 @@ export function Uploader({
               key={d.documentId}
               className="flex items-center gap-2 rounded-lg border border-edge bg-panel px-3 py-2 text-sm"
             >
-              <span>📄</span>
+              <i className="fa-solid fa-file-pdf text-accent2" />
               <span className="flex-1 truncate text-slate-200">{d.fileName}</span>
               <span className="shrink-0 text-[11px] text-slate-500">
                 {d.pages}p · {d.chunks} chunks
