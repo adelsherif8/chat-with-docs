@@ -1,24 +1,14 @@
-import OpenAI from "openai";
+import { openai, EMBEDDING_MODEL } from "./openai";
 
-export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "text-embedding-3-small";
-
-// Lazy singleton — constructing OpenAI() eagerly throws when the key is absent,
-// which breaks `next build` (it evaluates route modules without env vars).
-let _openai: OpenAI | null = null;
-function client(): OpenAI {
-  if (!_openai) {
-    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return _openai;
-}
+export { EMBEDDING_MODEL };
 
 /**
- * Embed one or more strings. Returns an array of vectors aligned to the input order.
- * The OpenAI batch endpoint preserves order, so index N out maps to index N in.
+ * Embed one or more strings. Returns vectors aligned to the input order
+ * (the OpenAI batch endpoint preserves order).
  */
 export async function embed(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
-  const res = await client().embeddings.create({
+  const res = await openai().embeddings.create({
     model: EMBEDDING_MODEL,
     input: texts,
   });

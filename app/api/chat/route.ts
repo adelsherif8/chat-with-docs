@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { anthropic, ANTHROPIC_MODEL } from "@/lib/anthropic";
+import { openai, CHAT_MODEL } from "@/lib/openai";
 import { embedOne } from "@/lib/embeddings";
-import { supabase, type MatchedChunk } from "@/lib/supabase";
+import { matchChunks } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,10 +11,10 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 const SYSTEM_PROMPT = `You are a precise assistant that answers questions about the user's uploaded documents.
 
 Rules:
-- Answer using ONLY the information in the provided documents.
-- Cite the specific passages you used. Citations are attached automatically when you ground a statement in a document.
-- If the answer is not contained in the documents, say so plainly — do not guess or use outside knowledge.
-- Be concise and direct. Prefer a short, well-structured answer over a long one.`;
+- Answer using ONLY the information in the numbered sources provided.
+- After each statement you make, cite the source it came from with a bracketed number like [1] or [2][3].
+- If the answer is not contained in the sources, say so plainly — do not guess or use outside knowledge.
+- Be concise and direct.`;
 
 const TOP_K = 6;
 
@@ -36,16 +36,9 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // 1. Retrieve relevant chunks
+        // 1. Retrieve relevant chunks via vector similarity
         const queryEmbedding = await embedOne(question);
-        const { data, error } = await supabase.rpc("match_chunks", {
-          query_embedding: queryEmbedding,
-          match_count: TOP_K,
-          filter_document: documentId ?? null,
-        });
-        if (error) throw new Error(error.message);
-
-        const matches = (data ?? []) as MatchedChunk[];
+        const matches = await matchChunks(queryEmbedding, TOP_K, documentId ?? null);
 
         if (matches.length === 0) {
           send(controller, {
@@ -57,7 +50,7 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // Tell the UI which sources we retrieved (index === document block index)
+        // Source index === the [n] the model will cite (1-based for the model).
         const sources = matches.map((m, index) => ({
           index,
           fileName: m.file_name,
@@ -67,58 +60,59 @@ export async function POST(req: NextRequest) {
         }));
         send(controller, { type: "sources", sources });
 
-        // 2. Build the Claude request — each chunk is a citable document block
-        const documentBlocks = matches.map((m) => ({
-          type: "document" as const,
-          source: {
-            type: "content" as const,
-            content: [{ type: "text" as const, text: m.content }],
-          },
-          title: `${m.file_name} · page ${m.page}`,
-          citations: { enabled: true },
-        }));
+        // 2. Build the grounded prompt
+        const context = matches
+          .map((m, i) => `[${i + 1}] (${m.file_name}, page ${m.page})\n${m.content}`)
+          .join("\n\n");
 
         const history = messages.slice(0, -1).map((m) => ({
           role: m.role,
           content: m.content,
         }));
 
-        const anthropicStream = anthropic.messages.stream({
-          model: ANTHROPIC_MODEL,
-          max_tokens: 1024,
-          system: SYSTEM_PROMPT,
+        const completion = await openai().chat.completions.create({
+          model: CHAT_MODEL,
+          stream: true,
+          temperature: 0.2,
           messages: [
+            { role: "system", content: SYSTEM_PROMPT },
             ...history,
             {
               role: "user",
-              content: [
-                ...documentBlocks,
-                { type: "text", text: question },
-              ],
+              content: `Sources:\n\n${context}\n\nQuestion: ${question}`,
             },
           ],
         });
 
-        // 3. Forward text + citation deltas to the client
-        for await (const event of anthropicStream) {
-          if (event.type === "content_block_delta") {
-            const delta = event.delta as any;
-            if (delta.type === "text_delta") {
-              send(controller, { type: "text", text: delta.text });
-            } else if (delta.type === "citations_delta" && delta.citation) {
-              const c = delta.citation;
-              const src = sources[c.document_index] ?? null;
-              send(controller, {
-                type: "citation",
-                citation: {
-                  documentIndex: c.document_index,
-                  citedText: c.cited_text,
-                  fileName: src?.fileName ?? c.document_title,
-                  page: src?.page ?? null,
-                },
-              });
-            }
+        // 3. Stream tokens, tracking which [n] markers the model actually cites
+        let full = "";
+        const citedNumbers = new Set<number>();
+
+        for await (const part of completion) {
+          const delta = part.choices[0]?.delta?.content;
+          if (!delta) continue;
+          full += delta;
+          send(controller, { type: "text", text: delta });
+
+          // Detect newly-completed [n] references in the accumulated text
+          for (const m of full.matchAll(/\[(\d+)\]/g)) {
+            citedNumbers.add(parseInt(m[1], 10));
           }
+        }
+
+        // 4. Emit one citation per cited source (mapping [n] → file + page + passage)
+        for (const n of [...citedNumbers].sort((a, b) => a - b)) {
+          const src = matches[n - 1];
+          if (!src) continue;
+          send(controller, {
+            type: "citation",
+            citation: {
+              documentIndex: n - 1,
+              citedText: src.content.slice(0, 320),
+              fileName: src.file_name,
+              page: src.page,
+            },
+          });
         }
 
         send(controller, { type: "done" });
